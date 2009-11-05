@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 
 require 'monitor'
+require 'fileutils'
 require 'rubygems'
 require 'yammer4r'
+require 'construct'
 require 'gtk2'
 require 'webkit'
 

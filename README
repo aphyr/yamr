@@ -1,7 +1,7 @@
 INSTALL
 -------
 sudo apt-get install ruby-gnome2-dev ruby-gnome2
-sudo gem install yammer4r
+sudo gem install yammer4r construct
 
 git clone http://github.com/danlucraft/rbwebkitgtk/tree
 cd rbwekitgtk

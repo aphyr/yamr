@@ -5,14 +5,30 @@ class Yamr::Client
   POLL_INTERVAL    = 60   # Seconds between checking for new messages
   REFRESH_INTERVAL = 5000 # ms between refreshing display
   BROWSER_CMD      = 'chromium-browser'
+  CONFIG_FILE      = File.join(ENV['HOME'], '.config', 'yamr', 'config')
 
   def initialize
-    @config_path = File.join(ENV['HOME'], '.yammer.yaml')
     @messages = []
   end
 
   # Sets up OAUTH
   def auth
+    if token = @config.oauth.token and secret = @config.oauth.secret
+      # Use cached credentials
+      @y = Yammer::Client.new(
+        :consumer => {
+          :key => Yamr::OAUTH_APP_KEY,
+          :secret => Yamr::OAUTH_APP_SECRET
+        },
+        :access => {
+          :token => token,
+          :secret => secret
+        }
+      )
+      return true
+    end 
+
+    # Go through the whole rigamarole...
     consumer = OAuth::Consumer.new(
       Yamr::OAUTH_APP_KEY,
       Yamr::OAUTH_APP_SECRET,
@@ -22,7 +38,6 @@ class Yamr::Client
     # Get request token
     request_token = consumer.get_request_token
     system BROWSER_CMD, request_token.authorize_url
-    puts "here"
 
     # Accept the code
     win = Gtk::Window.new
@@ -37,7 +52,6 @@ class Yamr::Client
     entry = Gtk::Entry.new
     entry.signal_connect 'activate' do
       code = entry.text.strip
-      connect request_token.get_access_token(:oauth_verifier => code)
       win.destroy
     end
     row.pack_start entry
@@ -51,11 +65,11 @@ class Yamr::Client
     end
     row.pack_start button, false
 
-    # Wait for the code
     win.show_all
   end
 
-  # Sets up the yammer client based on an OAUTH access token.
+  # Sets up the yammer client based on an OAUTH access token. Saves the given
+  # token info in the config.
   def connect(access_token)
     @y = Yammer::Client.new(
       :consumer => {
@@ -67,22 +81,43 @@ class Yamr::Client
         :secret => access_token.secret
       }
     )
+
+    # Save token and secret for next time
+    @config.oauth.token = access_token.token
+    @config.oauth.secret = access_token.secret
+    save
+
+    # Grab initial messages
     fetch_messages
   end
   
-  # Gets messages from the API and notifies if necessary
-  def fetch_messages(notify = true)
+  # Gets messages from the API.
+  # Calls notify(messages) if @messages is not empty.
+  def fetch_messages()
     return false unless @y
     begin
       messages = @y.messages(:all, :newer_than => @last_id).reverse
       unless messages.empty?
+        notify messages unless @messages.empty?
         @messages += messages
-        notify messages if notify
         @last_id = messages.last.id
       end
     rescue => e
       puts "Error fetching new messages: #{e.inspect}"
     end
+  end
+
+  # Load configuration
+  def load
+    @config = begin
+      Construct.load(File.read(CONFIG_FILE))
+    rescue
+      Construct.new
+    end
+
+    @config.define :oauth, :default => Construct.new
+    @config.oauth.define :token, :default => nil
+    @config.oauth.define :secret, :default => nil
   end
 
   # Alert the user to new messages
@@ -109,7 +144,7 @@ class Yamr::Client
   # Get messages, set up recurring functions...
   def run
     # Get initial messages and display right away.
-    fetch_messages false
+    fetch_messages
     render_messages
 
     # Every so often, scan for new messages
@@ -121,6 +156,14 @@ class Yamr::Client
     # Refresh the display
     Gtk.timeout_add(REFRESH_INTERVAL) do
       render_messages
+    end
+  end
+
+  # Saves configuration
+  def save
+    FileUtils.mkdir_p File.dirname(CONFIG_FILE)
+    File.open(CONFIG_FILE, 'w') do |f|
+     f.write @config.to_yaml
     end
   end
 
@@ -183,11 +226,26 @@ class Yamr::Client
     @window.add @stack
    
     # Update entry area
-    @message_entry = Gtk::Entry.new
-    @message_entry.signal_connect('activate') do
-      post @message_entry.text
+    row = Gtk::HBox.new
+    @stack.pack_start row, false
+
+    # Text field
+    message_entry = Gtk::Entry.new
+    message_entry.signal_connect('activate') do
+      text = message_entry.text
+      message_entry.text = ''
+      post text
     end
-    @stack.pack_start @message_entry, false
+    row.pack_start message_entry, true
+
+    # Button
+    button = Gtk::Button.new 'Yamr!'
+    button.signal_connect 'clicked' do
+      text = message_entry.text
+      message_entry.text = ''
+      post text
+    end
+    row.pack_start button, false
 
     # Messages area
     @messages_container = Gtk::ScrolledWindow.new
@@ -213,6 +271,7 @@ class Yamr::Client
   
   def start
     Gtk.init
+    self.load
     setup
     auth
     run
