@@ -12,5 +12,6 @@ module Yamr
   require 'snippets/datetime'
   require 'snippets/gtk'
   require 'yamr/version'
+  require 'yamr/oauth'
   require 'yamr/client'
 end

@@ -7,13 +7,72 @@ class Yamr::Client
   BROWSER_CMD      = 'chromium-browser'
 
   def initialize
-    config_path = File.join(ENV['HOME'], '.yammer.yaml')
-    @y = Yammer::Client.new :config => config_path
+    @config_path = File.join(ENV['HOME'], '.yammer.yaml')
     @messages = []
   end
 
+  # Sets up OAUTH
+  def auth
+    consumer = OAuth::Consumer.new(
+      Yamr::OAUTH_APP_KEY,
+      Yamr::OAUTH_APP_SECRET,
+      {:site => "https://www.yammer.com"}
+    )
+
+    # Get request token
+    request_token = consumer.get_request_token
+    system BROWSER_CMD, request_token.authorize_url
+    puts "here"
+
+    # Accept the code
+    win = Gtk::Window.new
+    win.window_position = Gtk::Window::POS_CENTER 
+    win.title = "#{Yamr::NAME} #{Yamr::VERSION} - OAUTH Verification"
+
+    row = Gtk::HBox.new
+    win.add row
+    
+    # Entry field
+    code = nil
+    entry = Gtk::Entry.new
+    entry.signal_connect 'activate' do
+      code = entry.text.strip
+      connect request_token.get_access_token(:oauth_verifier => code)
+      win.destroy
+    end
+    row.pack_start entry
+
+    # Entry button
+    button = Gtk::Button.new 'Authorize'
+    button.signal_connect 'clicked' do
+      code = entry.text.strip
+      connect request_token.get_access_token(:oauth_verifier => code)
+      win.destroy
+    end
+    row.pack_start button, false
+
+    # Wait for the code
+    win.show_all
+  end
+
+  # Sets up the yammer client based on an OAUTH access token.
+  def connect(access_token)
+    @y = Yammer::Client.new(
+      :consumer => {
+        :key => Yamr::OAUTH_APP_KEY, 
+        :secret => Yamr::OAUTH_APP_SECRET
+      },
+      :access => { 
+        :token => access_token.token,
+        :secret => access_token.secret
+      }
+    )
+    fetch_messages
+  end
+  
   # Gets messages from the API and notifies if necessary
   def fetch_messages(notify = true)
+    return false unless @y
     begin
       messages = @y.messages(:all, :newer_than => @last_id).reverse
       unless messages.empty?
@@ -136,16 +195,18 @@ class Yamr::Client
     @stack.pack_start @messages_container
 
     @view = Gtk::WebKit::WebView.new
+    @messages_container.add @view
+    
     # Rescroll on reload
     @view.signal_connect 'load-finished' do
       @messages_container.vadjustment.value = @pos
     end
+
     # Open links in the browser
     @view.signal_connect 'new-window-policy-decision-requested' do |view, frame, request, nav_action, policy_decision, user_data|
       system(BROWSER_CMD, request.uri)
       true
     end
-    @messages_container.add @view
 
     @window.show_all
   end
@@ -153,6 +214,7 @@ class Yamr::Client
   def start
     Gtk.init
     setup
+    auth
     run
     Gtk.main_with_queue 100
   end

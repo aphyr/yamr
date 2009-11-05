@@ -1,0 +1,4 @@
+module Yamr
+  OAUTH_APP_KEY = '8Ll6dVebCre8ag3ZlXBQ'
+  OAUTH_APP_SECRET = 'U1OePMrFGIIv2IPi9ff2gITNfPYGd13DdasjJqRsG0'
+end
