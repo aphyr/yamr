@@ -90,7 +90,21 @@ class Yamr::Client
     # Grab initial messages
     fetch_messages
   end
-  
+ 
+  # The current Yammer user
+  def current_user
+    @current_user ||= @y.current_user
+  end
+
+  # Deletes a message ID
+  def delete(id)
+    @y.message(:delete, :id => id)
+    @messages.delete_if do |msg|
+      msg.id == id
+    end
+    render_messages
+  end
+
   # Gets messages from the API.
   # Calls notify(messages) if @messages is not empty.
   def fetch_messages()
@@ -138,7 +152,6 @@ class Yamr::Client
   # Quit the app
   def quit
     Gtk.main_quit
-    exit 0
   end
 
   # Get messages, set up recurring functions...
@@ -194,6 +207,10 @@ class Yamr::Client
       html << '<h1 class="user">'
       html << "<a target=\"_blank\" href=\"#{message.web_url}\">#{user.full_name}</a>"
       html << '</h1>'
+      # TODO: rewrite yammer4r ==
+      if user.name == current_user.name
+        html << "<a class=\"delete\" href=\"yamr://delete/#{message.id}\">x</a>"
+      end
       html << '<div class="body">' + body + '</div>'
       html << '<div class="date">' + date.relative + '</div>'
       html << '<div class="visual-clear"></div>'
@@ -268,6 +285,14 @@ class Yamr::Client
       true
     end
 
+    # Handle function calls
+    @view.signal_connect 'navigation-policy-decision-requested' do |view, frame, request, navigation_action, policy_decision, user_data|
+      if request.uri[/^yamr:\/\/(.+)$/]
+        yamr_uri $1
+        true
+      end
+    end
+
     @window.show_all
   end
   
@@ -285,6 +310,37 @@ class Yamr::Client
       @users = Hash[*@y.users.map { |u| [u.id, u] }.flatten]
     else
       @users
+    end
+  end
+
+  # Handles YAMR URI callbacks from the browser.
+  def yamr_uri(uri)
+    fragments = uri.split('/')
+    case fragments.shift
+    when 'delete'
+      # Delete a post.
+      id = fragments.shift.to_i
+      message = @messages.find { |m| m.id == id }
+      p message
+      dialog = Gtk::MessageDialog.new(
+        @window, 
+        Gtk::Dialog::MODAL | Gtk::Dialog::DESTROY_WITH_PARENT,
+        Gtk::MessageDialog::QUESTION,
+        Gtk::MessageDialog::BUTTONS_YES_NO, 
+        "Are you sure you want to delete this message?"
+      )
+      dialog.secondary_text = message.body.parsed
+
+      dialog.signal_connect 'response' do |dialog, response|
+        if response == -8 # Not Gtk::Dialog::RESPONSE_OK?
+          delete id
+        end
+      end
+
+      dialog.run
+      dialog.destroy
+    else
+      puts "Unknown YAMR uri #{uri}"
     end
   end
 end

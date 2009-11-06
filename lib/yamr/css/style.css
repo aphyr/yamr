@@ -36,6 +36,15 @@ body {
   text-decoration: underline;
 }
 
+.message .delete {
+  top: 0px;
+  right: 2px;
+  position: absolute;
+  color: #aaa;
+  font-weight: bolder;
+  text-decoration: none;
+}
+
 .mugshot {
   -webkit-border-top-left-radius: 2px;
   -webkit-border-top-right-radius: 2px;
@@ -48,6 +57,7 @@ body {
 
 .message .text {
   margin-left: 54px;
+  position: relative;
 }
 
 .message .body {
