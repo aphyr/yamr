@@ -28,8 +28,12 @@ body {
 }
 
 .message h1 a {
-  text-decoration: none !important;
-  color: #000 !important;
+  text-decoration: none;
+  color: #000;
+}
+
+.message h1 a:hover {
+  text-decoration: underline;
 }
 
 .mugshot {
