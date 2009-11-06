@@ -46,11 +46,17 @@ body {
   float: left;
 }
 
+.message .text {
+  margin-left: 54px;
+}
+
 .message .body {
   white-space: pre-wrap;
+  min-height: 24px;
 }
 
 .message .date {
+  margin-right: 1px;
   text-align: right;
   font-size: 80%;
   color: #888;

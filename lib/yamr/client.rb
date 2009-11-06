@@ -190,12 +190,14 @@ class Yamr::Client
       # Write the message
       html << '<div class="message">'
       html << "<img class=\"mugshot\" src=\"#{user.mugshot_url}\" alt=\"#{user.name}\" />"
+      html << '<div class="text">'
       html << '<h1 class="user">'
       html << "<a target=\"_blank\" href=\"#{message.web_url}\">#{user.full_name}</a>"
       html << '</h1>'
       html << '<div class="body">' + body + '</div>'
       html << '<div class="date">' + date.relative + '</div>'
       html << '<div class="visual-clear"></div>'
+      html << '</div>'
       html << '</div>'
     end
 
