@@ -149,7 +149,8 @@ class Yamr::Client
   # Post an update
   def post(str)
     str = escape_html str
-    @y.message(:post, :body => str)
+    response = @y.message(:post, :body => str)
+    p response
   end
 
   # Quit the app
@@ -160,8 +161,11 @@ class Yamr::Client
   # Get messages, set up recurring functions...
   def run
     # Get initial messages and display right away.
-    fetch_messages
-    render_messages
+    Gtk.timeout_add(10) do
+      fetch_messages
+      render_messages
+      false
+    end
 
     # Every so often, scan for new messages
     Gtk.timeout_add(POLL_INTERVAL * 1000) do
