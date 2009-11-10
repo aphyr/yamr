@@ -7,6 +7,8 @@ class Yamr::Client
   BROWSER_CMD      = 'chromium-browser'
   CONFIG_FILE      = File.join(ENV['HOME'], '.config', 'yamr', 'config')
 
+  include Yamr::CGI
+
   def initialize
     @messages = []
   end
@@ -37,7 +39,7 @@ class Yamr::Client
 
     # Get request token
     request_token = consumer.get_request_token
-    system BROWSER_CMD, request_token.authorize_url
+    fork { exec BROWSER_CMD, request_token.authorize_url }
 
     # Accept the code
     win = Gtk::Window.new
@@ -146,6 +148,7 @@ class Yamr::Client
 
   # Post an update
   def post(str)
+    str = escape_html str
     @y.message(:post, :body => str)
   end
 
@@ -281,7 +284,7 @@ class Yamr::Client
 
     # Open links in the browser
     @view.signal_connect 'new-window-policy-decision-requested' do |view, frame, request, nav_action, policy_decision, user_data|
-      system(BROWSER_CMD, request.uri)
+      fork { exec(BROWSER_CMD, request.uri) }
       true
     end
 
