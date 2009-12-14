@@ -15,6 +15,7 @@ body {
   -webkit-border-top-right-radius: 2px;
   -webkit-border-bottom-left-radius: 2px;
   -webkit-border-bottom-right-radius: 2px;
+  -webkit-box-shadow: 2px 0 0px #000;
   background: #fff;
   margin: 4px;
   margin-bottom: 6px;
