@@ -39,6 +39,7 @@ class Yamr::Client
 
     # Get request token
     request_token = consumer.get_request_token
+    puts "Opening #{request_token.authorize_url} for authorization"
     fork { exec BROWSER_CMD, request_token.authorize_url }
 
     # Accept the code
